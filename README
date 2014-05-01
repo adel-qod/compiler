@@ -1,20 +1,15 @@
      Adel C Compiler
 
-This is a C compiler targeting x86_64 Linux systems.
+This is a C compiler targeting x86_64 Linux systems with some planned aditions
+Not everything in C will be implemented 
+
 Reason? I like compilers
 
-The language used for this project is C99.
+The language used for this project is python 3.2.
 Why?
-	Because C++ sucks as a language, loads of time is spent taking care of
-	too many ugly corner cases and details instead of getting the job done.
-	It adds some benefits like a nice standard library but I can get away
-	with implementing what I need from it.
-	Generics? They're not exactly needed here.
-	Object Oriented Programming? Get over it, just because people used that
-	model for the last 15 years does not make it the best way to organize a
-	system.
-The compiler used:
-    	Clang: Better error messages than gcc and not much of a performance drop.
+I am doing this for learning/fun so I wanna use a language that can be make 
+  as productive as possible (maybe I'll do a re-write using Haskel later, who
+  knows)
 
 Files:
     All documentation files are in ./doc
