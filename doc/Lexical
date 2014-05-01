@@ -1,0 +1,114 @@
+This file describes the lexical structure of the language this project is going
+to compile [source language]
+
+The description here is gonna be written in regular expressions; the file is
+organized as follows:
+1- Supported reserved words
+2- Supported special characters (for operators etc.)
+3- Identifiers
+4- String and character literals
+5- Comments
+6- Numbers: Integers & floating point
+7- Notes about implementation
+
+-Each pattern has a corresponding token and optional value attribute described below
+
+1- Supported reserved words:
+   if	     IF
+   else	     ELSE
+   switch    SWITCH
+   case	     CASE
+   default   DEFAULT
+   while     WHILE
+   for	     FOR
+   break     BREAK
+   continue  CONTINUE 
+   int	     T_INT
+   float     T_FLOAT
+   char	     T_CHAR
+   void	     VOID
+   unsigned  UNSIGNED
+   const     CONST
+   return    RET
+   static    STATIC
+   struct    STRUCT
+   sizeof    SIZEOF
+
+2- Other tokens:
+Comparison operators:
+   <         LT  
+   >	     MT
+   >=	     MEQ
+   <=	     LEQ
+   ==	     EQ
+   !=	     NEQ
+Logical operators:
+   &&	     LOG_AND
+   ||	     LOG_OR
+   !	     LOG_NOT
+Bit-wise operations:
+   &         BIT_AND
+   |	     BIT_OR
+   ~	     BIT_NOT
+   ^	     BIT_XOR
+Misc:
+   +	     PLUS
+   -	     MINUS
+   *	     ASTERISK 
+   /	     DIV
+   =	     assignment
+Grouping:
+   (         LEFT_PAREN
+   )         RIGHT_PAREN
+   {         LEFT_BRACE
+   }	     RIGHT_BRACE
+   [	     LEFT_BRACKET
+   ]	     RIGHT_BRACKET
+   ;	     SEMI_COLON
+   ,	     COMMA
+   '	     SING_QUOTE
+   "	     DOUB_QUOTE
+
+Helpers:
+   LETTER: [a-zA-Z]
+   NUMBER: [0-9]
+   ID_CHAR: LETTER|NUMBER|_
+   
+3- Identifiers:
+   [_LETTER]+ID_CHAR*	ID	Lexeme 
+
+4- String and character literals:
+   '.?'	      		CHAR	Lexeme
+   ".*"			STRING	Lexeme
+
+5- Comments:
+   /*(.*)*/		SKIP (no action)
+
+6- Numbers:
+   NUMBER+	INT	Lexeme
+   NUMBER+.NUMBER+	FLOAT	Lexeme
+
+7- Notes about implementation:
+How to read the input:
+    We'll arrange two File system BLOCK-SIZE buffers and each time one is read, we
+    refill from the file by reading a BLOCK-SIZE at a time.
+    Each buffer ends with a special marker which is the null terminator.
+    Two buffers exist as opposed to one because we want to minimize the chances
+    of having a lexeme that's too large to be correctly recognized.
+    Reads are done in block-size for performance reasons.
+    In those two buffers, we keep two pointers:
+    lexeme_begin: points at the beginning of the lexeme we're currently examining.
+    scan_head: scans ahead until a pattern is found; whenever it moves it
+    should check whether it reached end of buffer and if so, refill the other
+    buffer and point to its beginning. Once a lexeme matches a pattern we
+    advance lexeme_begin to the spot next to the current lexeme; we may
+    optionally copy the lexeme contents before that (e.g in the case of
+    identifiers).
+    
+Reserved words:
+    We'll build a table containing all reserved key-words.
+    When we're trying to recognize a pattern, we check if it's int he table and
+    if it's not then we'll consider the lexeme we found to be an identifier.
+
+Recognizing:
+

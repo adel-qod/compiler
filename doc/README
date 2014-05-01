@@ -1,0 +1,10 @@
+Important files:
+  1- STYLE: Describes the coding style for this project
+  2- REQ: Describes the requirements of the project 
+  3- Design: Describes the design choices of this project
+  4- Lexical: Describes the lexical structure of the language we're compiling
+  5- Grammar: Describes the grammar for the language we're compiling
+
+By the way; the whole of this project is impossible to build without the Dragon
+Book; most of the ideas I am using aren't mine but found in the book, you really
+should give it a read.

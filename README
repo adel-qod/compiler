@@ -1,0 +1,26 @@
+     Adel C Compiler
+
+This is a C compiler targeting x86_64 Linux systems.
+Reason? I like compilers
+
+The language used for this project is C99.
+Why?
+	Because C++ sucks as a language, loads of time is spent taking care of
+	too many ugly corner cases and details instead of getting the job done.
+	It adds some benefits like a nice standard library but I can get away
+	with implementing what I need from it.
+	Generics? They're not exactly needed here.
+	Object Oriented Programming? Get over it, just because people used that
+	model for the last 15 years does not make it the best way to organize a
+	system.
+The compiler used:
+    	Clang: Better error messages than gcc and not much of a performance drop.
+
+Files:
+    All documentation files are in ./doc
+      Check the readme file there
+
+License: BSD-2
+Contact info:
+      Adel Qodmani
+      mpcadel@gmail.com
