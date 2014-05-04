@@ -98,13 +98,12 @@ class Tokens:
     RCURL = 46
     LBRACKET = 47  # [
     RBRACKET = 48
-    SIN_QUOTE = 49
-    DOUB_QUOTE = 50
     # Misc
     COL = 51  # ,
     SEM_COL = 52
     AT = 53  # @
     STR = 54  # "adsda"
+    CMNT = 55
 
     @staticmethod
     def tok_to_str(tok):
@@ -134,9 +133,8 @@ class Tokens:
                 41 : 'DOC_ACC', 42 : 'DASH_ACC', 43 : 'LPARAN',
                 44 : 'RPARAN', 45 : 'LCURL', 46 : 'RCURL',
                 47 : 'LBRACKET', 48 : 'RBRACKET',
-                49 : 'SIN_QUOTE', 50 : 'DOUB_QUOTE',
                 51 : 'COL', 52 : 'SEM_QOL', 53 : 'AT',
-                54 : 'STR'
+                54 : 'STR', 55 : 'CMNT'
             }
         if tok in dic:
             return dic[tok]
@@ -155,7 +153,7 @@ class Lexer:
         logging.debug('file block size: ' + str(os.stat(path).st_blksize))
         self._res = { }
         self._init_reserved()
-        self._col = 0
+        self._col = -1
         self._row = 1
         self._peek = None
         self._readch()
@@ -171,11 +169,105 @@ class Lexer:
         """
         self._ignore_spaces()
         tmp = []
+        start_row = self._row
         start_col = self._col
         if self._peek.isalpha() or self._peek == '_':
             return self._tokenize_res_id()
         elif self._peek.isnumeric():
             return self._tokenize_number()
+        elif self._peek == "'":
+            return self._tokenize_char_literal()
+        elif self._peek == '"':
+            return self._tokenize_str_literal()
+        elif self._peek == '+':
+            self._readch()  # move to next char
+            return Tokens.ADD, start_row, start_col
+        elif self._peek == '-':
+            self._readch()  # move to next char
+            if self._peek == '>':
+                self._readch()
+                return Tokens.DASH_ACC, start_row, start_col
+            return Tokens.MINUS, start_row, start_col
+        elif self._peek == '*':
+            self._readch()  # move to next char
+            return Tokens.ASTER, start_row, start_col
+        elif self._peek == '/':
+            self._readch()  # move to next char
+            if self._peek == '/':
+                return self._tokenize_comment()
+            return Tokens.DIVID, start_row, start_col
+        elif self._peek == '%':
+            self._readch()  # move to next char
+            return Tokens.MOD, start_row, start_col
+        elif self._peek == '=':
+            self._readch()  # move to next char
+            if self._peek == '=':
+                self._readch()
+                return Tokens.EQ, start_row, start_col
+            return Tokens.ASSIGN, start_row, start_col
+        elif self._peek == '<':
+            self._readch()  # move to next char
+            if self._peek == '=':
+                self._readch()
+                return Tokens.LE, start_row, start_col
+            return Tokens.LT, start_row, start_col
+        elif self._peek == '>':
+            self._readch()
+            if self._peek == '=':
+                self._readch()
+                return Tokens.ME, start_row, start_col
+            return Tokens.MT, start_row, start_col
+        elif self._peek == '!':
+            self._readch()
+            if self._peek == '=':
+                self._readch()
+                return Tokens.NEQ, start_row, start_col
+            return Tokens.NOT, start_row, start_col
+        elif self._peek == '&':
+            self._readch()
+            if self._peek == '&':
+                self._readch()
+                return Tokens.AND, start_row, start_col
+            return Tokens.BIT_AND, start_row, start_col
+        elif self._peek == '|':
+            self._readch()
+            if self._peek == '|':
+                self._readch()
+                return Tokens.OR, start_row, start_col
+            return Tokens.BIT_OR, start_row, start_col
+        elif self._peek == '~':
+            self._readch()
+            return Tokens.BIT_NOT, start_row, start_col
+        elif self._peek == '.':
+            self._readch()
+            return Tokens.DOT_ACC, start_row, start_col
+        elif self._peek == '(':
+            self._readch()
+            return Tokens.LPARAN, start_row, start_col
+        elif self._peek == ')':
+            self._readch()
+            return Tokens.RPARAN, start_row, start_col
+        elif self._peek == '{':
+            self._readch()
+            return Tokens.LCURL, start_row, start_col
+        elif self._peek == '}':
+            self._readch()
+            return Tokens.RCURL, start_row, start_col
+        elif self._peek == '[':
+            self._readch()
+            return Tokens.LBRACKET, start_row, start_col
+        elif self._peek == ']':
+            self._readch()
+            return Tokens.RBRACKET, start_row, start_col
+        elif self._peek == ',':
+            self._readch()
+            return Tokens.COL, start_row, start_col
+        elif self._peek == ';':
+            self._readch()
+            return Tokens.SEM_COL, start_row, start_col
+        elif self._peek == '@':
+            self._readch()
+            return Tokens.AT, start_row, start_col
         elif self._peek == '':
             return None  # stream is done
         logging.debug('peek = %s\n' % self._peek)
@@ -185,11 +277,6 @@ class Lexer:
     def _ignore_spaces(self):
         """ Reads from the file as long as the char read is whitespace. """
         while self._peek.isspace():
-            if self._peek == '\n':
-                self._col = 0
-                self._row = self._row + 1
-            else:
-                self._col = self._col + 1
             self._readch()
 
     def _tokenize_res_id(self):
@@ -199,16 +286,17 @@ class Lexer:
         Returns: The token number, the row & col numbers where it appeared,
                  [value: the ID itself as a string]
         """
+        assert self._peek.isalpha() or self._peek == '_'
         tmp = []
+        start_row = self._row
         start_col = self._col 
         while self._peek.isalnum() or self._peek == '_':
             tmp.append(self._peek)
             self._readch()
-            self._col  = self._col + 1
         lexeme = ''.join(tmp)
         if lexeme in self._res:
-            return self._res[lexeme], self._row, start_col
-        return Tokens.ID, self._row, start_col, lexeme
+            return self._res[lexeme], start_row, start_col
+        return Tokens.ID, start_row, start_col, lexeme
 
     def _tokenize_number(self):
         """
@@ -217,29 +305,103 @@ class Lexer:
         Returns: The token number, the row & col numbers where it appeared,
                  the number itself
         """
+        assert self._peek.isnumeric()
         tmp = []
-        start_col = self._col 
+        start_row = self._row
+        start_col = self._col
         while self._peek.isnumeric():
             tmp.append(self._peek)
             self._readch()
-            self._col  = self._col + 1
         if self._peek != '.':
             lexeme = int(''.join(tmp))
-            return Tokens.INT, self._row, start_col, lexeme
+            return Tokens.INT, start_row, start_col, lexeme
         tmp.append('.')
         self._readch()
-        self._col  = self._col + 1
         if not self._peek.isnumeric():
-            print('error! line: %d col: %d' % (self._row, self._col)) 
-            print('floating point numbers should be of the form x.y')
-            sys.exit(2)
+            self.lex_err('floating point numbers should be of the form x.y')
         while self._peek.isnumeric():
             tmp.append(self._peek)
             self._readch()
-            self._col  = self._col + 1
         lexeme = float(''.join(tmp))
-        return Tokens.FLOAT, self._row, start_col, lexeme
+        return Tokens.FLOAT, start_row, start_col, lexeme
 
+    def _tokenize_char_literal(self):
+        """
+        Tokenizes single char literals (e.g 'h' or '\t').
+        
+        Returns: The token number, the row & col numbers where it appeared,
+                 the ascii value of the char literal as an int 
+        """
+        assert self._peek == "'"
+        start_row = self._row
+        start_col = self._col
+        self._readch()
+        lexeme = self._peek
+        #  logging.debug(tok)
+        if lexeme == "'":  # empty character literals '' are not allowed
+            self.lex_err("Char literals cannot be empty (i.e '')")
+        elif lexeme == '\\':  # if what we read is a skip character (e.g \t)
+            skip_char = {
+                '0' : 0, 'a' : 7, 'b' : 8, 't' : 9, 'n' : 10, 'v' : 11,
+                'f' : 12, 'r' : 13, '\\' : 28, "'" : 39
+                }
+            self._readch()
+            lexeme = self._peek
+            if lexeme not in skip_char:
+                self.lex_err('Char followed by \ is not an ascii skip char')
+            lexeme = get_ascii_skip_val(lexeme)
+        else:
+            lexeme = ord(lexeme)
+        self._readch()
+        if self._peek != "'":
+            self.lex_err("Char literals contain one char (e.g 'a' or '\\a')")
+        # we need to advance the peek to the begining of the next char
+        # beyond this token                
+        self._readch()
+        return Tokens.CHAR, start_row, start_col, lexeme               
+
+    def _tokenize_str_literal(self):
+        """
+        Tokenizes string literals.
+
+        Returns: The token number, the row & col numbers where it appeared,
+                 the lexeme as a string (i.e 'abcde')
+        Note that empty strings are allowed.
+        """
+        assert self._peek == '"'
+        start_row = self._row
+        start_col = self._col
+        self._readch()  # now we're at the first char in the str
+        tmp = []
+        while self._peek != '"':
+            if self._peek == '':
+                self.lex_err('Encountered EOF before string termination')
+            if self._peek == '\n':
+                self.lex_err('string literals can span only one line')
+            tmp.append(self._peek)
+            self._readch()
+        self._readch()  # just consume the trailing "
+        lexeme = ''.join(tmp)
+        return Tokens.STR, start_row, start_col, lexeme
+
+    def _tokenize_comment(self):
+        """
+        Tokenizes comments.
+
+        We might need comments later if we wanna add debug symbols.
+        Return:
+            Token ID, row, col, the comment as a string
+        """
+        start_row = self._row
+        start_col = self._col -1  # col is at the 2nd /
+        self._readch()  # now we're past the //
+        tmp = []
+        while self._peek != '\n':
+            tmp.append(self._peek)
+            self._readch()
+        lexeme = ''.join(tmp)
+        return Tokens.CMNT, start_row, start_col, lexeme
+    
     def _init_reserved(self):
         """
         Init the dic _res with the reserved keywords
@@ -260,9 +422,29 @@ class Lexer:
     def _readch(self):
         """
         Reads the next character from the file into peek.
+
+        It reads the next char from the file into peek and sets the values
+        of the _col and _row to the col number and row number respectively of
+        where the char was read
         """
         self._peek = self._file.read(1)
+        if self._peek == '\n':
+            self._col = -1
+            self._row = self._row + 1
+        else:
+            self._col = self._col + 1
+        
+    def lex_err(self, err):
+        """
+        Prints err and exits program on code 2.
 
+        Arguments:
+            err: the err message to be printed
+        """
+        print('Lexical error - line: %d  col: %d' % (self._row, self._col))
+        print(err)
+        sys.exit(2)
+        
 def get_ascii_skip_val(char):
     """
     returns the ascii value of the skip character \char.
@@ -270,29 +452,14 @@ def get_ascii_skip_val(char):
     Returns None if given a char that doesn't carry a special meaning if
     \ proceeds it such as g
     """
-    val = None
     assert len(char) == 1
-    if char == '0':
-        val = 0
-    elif char == 'a':  # bell
-        val = 7
-    elif char == 'b':  # backspace
-        val = 8
-    elif char == 't':  # tab
-        val = 9
-    elif char == 'n':  # newline
-        val = 10
-    elif char == 'v':  # vertical tab
-        val = 11
-    elif char == 'f':  # form feed
-        val = 12
-    elif char == 'r':  # carriage ret
-        val = 13
-    elif char == "\\":  # \ line separtor
-        val = 28
-    elif char == "'":  # ' skip character
-        val = 39
-    return val
+    skip_char = {
+        '0' : 0, 'a' : 7, 'b' : 8, 't' : 9, 'n' : 10, 'v' : 11, 'f' : 12,
+        'r' : 13, '\\' : 28, "'" : 39
+        }
+    if char in skip_char:
+        return skip_char[char]
+    return None
 
 def test_lex(path):
     """
@@ -303,21 +470,32 @@ def test_lex(path):
     """
     lex = Lexer(path)
     tok = lex.scan()
+    print(type(tok))
     while tok is not None:
         if tok == -1:
             print("Error encountered")
             return
         elif tok[0] == Tokens.ID:
-            print('ID: %s %d %d' % (tok[3], tok[1], tok[2]))
-        elif tok[0] == Tokens.INT:
+            s = '%s %d %d %s' % (Tokens.tok_to_str(tok[0]), tok[1],
+                                tok[2], tok[3])
+            print(s)
+        elif tok[0] == Tokens.INT or tok[0] == Tokens.CHAR:
             s = '%s %d %d %d' % (Tokens.tok_to_str(tok[0]), tok[1],
                                 tok[2], tok[3])
             print(s)
         elif tok[0] == Tokens.FLOAT:
             s = '%s %d %d %f' % (Tokens.tok_to_str(tok[0]), tok[1],
                                  tok[2], tok[3])
-            print(s)                                 
-        else:
+            print(s)
+        elif tok[0] == Tokens.STR:
+            s = '%s %d %d %s' % (Tokens.tok_to_str(tok[0]), tok[1],
+                                 tok[2], tok[3])
+            print(s)
+        elif tok[0] == Tokens.CMNT:
+            s = '%s %d %d %s' % (Tokens.tok_to_str(tok[0]), tok[1],
+                                 tok[2], tok[3])
+            print(s) 
+        else: # reserved word
             s = '%s %d %d' % (Tokens.tok_to_str(tok[0]), tok[1], tok[2])
             print(s)
         tok = lex.scan()
