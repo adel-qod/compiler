@@ -30,9 +30,11 @@ organized as follows:
    unsigned  UNSIGNED
    const     CONST
    return    RET
+   extern    EXTERN
    static    STATIC
    struct    STRUCT
    sizeof    SIZEOF
+   in	     IN (additional - check semantics document)
 
 2- Other tokens:
 Comparison operators:
@@ -57,6 +59,7 @@ Misc:
    *	     ASTERISK 
    /	     DIV
    =	     assignment
+   @	     AT (used as an addition to the language, use described in semantics doc)
 Grouping:
    (         LEFT_PAREN
    )         RIGHT_PAREN
@@ -90,20 +93,8 @@ Helpers:
 
 7- Notes about implementation:
 How to read the input:
-    We'll arrange two File system BLOCK-SIZE buffers and each time one is read, we
-    refill from the file by reading a BLOCK-SIZE at a time.
-    Each buffer ends with a special marker which is the null terminator.
-    Two buffers exist as opposed to one because we want to minimize the chances
-    of having a lexeme that's too large to be correctly recognized.
-    Reads are done in block-size for performance reasons.
-    In those two buffers, we keep two pointers:
-    lexeme_begin: points at the beginning of the lexeme we're currently examining.
-    scan_head: scans ahead until a pattern is found; whenever it moves it
-    should check whether it reached end of buffer and if so, refill the other
-    buffer and point to its beginning. Once a lexeme matches a pattern we
-    advance lexeme_begin to the spot next to the current lexeme; we may
-    optionally copy the lexeme contents before that (e.g in the case of
-    identifiers).
+    We use buffered IO to speed reading from the file; the buffer size should
+    ideally be equal to the file block size
     
 Reserved words:
     We'll build a table containing all reserved key-words.
@@ -111,4 +102,19 @@ Reserved words:
     if it's not then we'll consider the lexeme we found to be an identifier.
 
 Recognizing:
+    The code is straight forward, we read the stream one character at a time
+    and check what type of char we have and accordingly behave, if a letter; we
+    try to recognize an ID or a reserved word, if a number, we keep consuming
+    the numbers that follow; and same approach is used to extract the rest of
+    the tokens.
 
+    Important note about usage:
+    use the function scan() to extract the tokens from the file; it returns at
+    least three parameters with an optional fourth:
+    Token ID, row number of the first char of the token, col number of the first
+    char of the token, [the actual lexeme in case of IDs, literals, numbers and comments]
+
+    Comments:
+    Note that scan() returns and recognizes comments as tokens, if you don't
+    want this behavior, wrap it with a function that calls scan() again should
+    it get a comment.
